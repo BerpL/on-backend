@@ -1,36 +1,35 @@
 var express = require('express');
-var bcrypt = require('bcryptjs');
-var jwt = require('jsonwebtoken');
 
 var mdAutentication = require('../middlewares/autentication');
+
 var app = express();
 
-var Usuario = require('../models/usuario');
+var Colegio = require('../models/colegio');
 
 // =====================================
-// Obtener todos los usuarios
+// Obtener todos los colegios
 // =====================================
 app.get('/', (req, res, next) => {
 
     var desde = req.query.desde || 0;
     desde = Number(desde);
 
-    Usuario.find({}, 'nombre email img role')
+    Colegio.find({})
         .skip(desde)
         .limit(5)
-        .exec((err, usuarios) => {
+        .populate('usuario', 'nombre email')
+        .exec((err, colegios) => {
             if (err) {
                 return res.status(500).json({
                     ok: false,
-                    mensaje: 'error cargando usuarios',
+                    mensaje: 'error cargando colegios',
                     errors: err
                 });
             }
-
-            Usuario.countDocuments({}, (err, conteo) => {
+            Colegio.countDocuments({}, (err, conteo) => {
                 res.status(200).json({
                     ok: true,
-                    usuarios: usuarios,
+                    colegios: colegios,
                     total: conteo
                 });
             })
@@ -40,46 +39,44 @@ app.get('/', (req, res, next) => {
 });
 
 // =====================================
-// Actualizar usuario
+// Actualizar colegio
 // =====================================    
 app.put('/:id', mdAutentication.varificaToken, (req, res) => {
 
     var id = req.params.id;
     var body = req.body;
 
-    Usuario.findById(id, (err, usuario) => {
+    Colegio.findById(id, (err, colegio) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'error al buscar usuario',
+                mensaje: 'error al buscar colegio',
                 errors: err
             });
         }
 
-        if (!usuario) {
+        if (!colegio) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'el usuario con el id ' + id + ' no existe',
-                errors: { message: 'no existe un usuario con ese ID' }
+                mensaje: 'el colegio con el id ' + id + ' no existe',
+                errors: { message: 'no existe un colegio con ese ID' }
             });
         }
-        usuario.nombre = body.nombre;
-        usuario.email = body.email;
-        usuario.role = body.role;
+        colegio.nombre = body.nombre;
+        colegio.usuario = req.usuario._id;
 
-        usuario.save((err, usuarioGuardado) => {
+        colegio.save((err, colegioGuardado) => {
             if (err) {
                 return res.status(400).json({
                     ok: false,
-                    mensaje: 'error al actualizar usuario',
+                    mensaje: 'error al actualizar colegio',
                     errors: err
                 });
             }
-            usuarioGuardado.password = ':)';
             res.status(200).json({
                 ok: true,
-                usuario: usuarioGuardado
+                colegio: colegioGuardado
             });
         });
 
@@ -88,63 +85,59 @@ app.put('/:id', mdAutentication.varificaToken, (req, res) => {
 
 
 // =====================================
-// Crear un nuevo usuario
+// Crear un nuevo colegio
 // =====================================
 app.post('/', mdAutentication.varificaToken, (req, res, next) => {
     var body = req.body;
 
-    var usuario = new Usuario({
+    var colegio = new Colegio({
         nombre: body.nombre,
-        email: body.email,
-        password: bcrypt.hashSync(body.password, 10),
-        img: body.img,
-        role: body.role
+        usuario: req.usuario._id
     });
 
-    usuario.save((err, usuarioGuardado) => {
+    colegio.save((err, colegioGuardado) => {
         if (err) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'error al crear usuario',
+                mensaje: 'error al crear colegio',
                 errors: err
             });
         }
         res.status(201).json({
             ok: true,
-            usuario: usuarioGuardado,
-            usuariotoken: req.usuario
+            colegio: colegioGuardado,
         });
     });
 
 });
 
 // =====================================
-// Borrar un usuario por el id
+// Borrar un colegio por el id
 // =====================================
 app.delete('/:id', mdAutentication.varificaToken, (req, res) => {
 
     var id = req.params.id;
 
-    Usuario.findByIdAndRemove(id, (err, usuarioBorrado) => {
+    Colegio.findByIdAndRemove(id, (err, colegioBorrado) => {
 
         if (err) {
             return res.status(500).json({
                 ok: false,
-                mensaje: 'error al borrar usuario',
+                mensaje: 'error al borrar colegio',
                 errors: err
             });
         }
-        if (!usuarioBorrado) {
+        if (!colegioBorrado) {
             return res.status(400).json({
                 ok: false,
-                mensaje: 'no existe un usuario con ese ID',
-                errors: { message: 'no existe un usuario con ese ID' }
+                mensaje: 'no existe un colegio con ese ID',
+                errors: { message: 'no existe un colegio con ese ID' }
             });
         }
 
         res.status(200).json({
             ok: true,
-            usuario: usuarioBorrado
+            colegio: colegioBorrado
         });
 
     });
